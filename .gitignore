@@ -1,0 +1,13 @@
+# Secrets & tokens — never commit
+.env
+schwab_token.json
+
+# Local data (DB, chain snapshots, grading queue)
+data/
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
