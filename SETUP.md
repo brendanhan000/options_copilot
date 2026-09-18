@@ -9,16 +9,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 2. Schwab developer app
+## 2. Schwab access (central hub)
 
-1. Sign up at https://developer.schwab.com and create an "Individual Developer" app.
-2. Add **both** API products to the app:
-   - **Accounts and Trading Production**
-   - **Market Data Production**
-3. Set the callback URL to exactly `https://127.0.0.1:8182` (must match
-   `SCHWAB_CALLBACK_URL` in `.env` character-for-character).
-4. Wait until the app status shows **"Ready For Use"** (approval can take a
-   few days; "Approved - Pending" will not work).
+Schwab access is handled by the central **schwab_hub** (`../schwab_hub`), which owns the
+Schwab app credentials and the login. See `../schwab_hub/README.md` for the one-time setup
+(the app needs both **Accounts and Trading Production** and **Market Data Production**).
+
+```bash
+# the schwab_hub client is already installed by `pip install -r requirements.txt` above
+../schwab_hub/run.sh login    # first time, then weekly (Schwab refresh tokens last 7 days)
+../schwab_hub/run.sh          # leave running
+```
 
 ## 3. Configure secrets
 
@@ -26,7 +27,6 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and fill in `SCHWAB_APP_KEY` and `SCHWAB_APP_SECRET`.
 Leave `ANTHROPIC_API_KEY` empty unless you want the optional paid grading path.
 
 ## 4. First sync
@@ -35,12 +35,7 @@ Leave `ANTHROPIC_API_KEY` empty unless you want the optional paid grading path.
 python run.py sync --days 365
 ```
 
-- The first run opens your browser for the Schwab OAuth login and runs a
-  temporary local HTTPS server on port 8182 to catch the redirect. Your
-  browser will warn about the self-signed localhost certificate — proceed.
-- The token is saved to `data/schwab_token.json` and refreshes automatically.
-- The refresh token expires after **7 days idle**; when that happens the next
-  sync re-opens the browser login. This is Schwab policy — just log in again.
+The sync talks to the hub, so it needs no browser login or Schwab secrets of its own.
 
 ## 5. Record theses, then grade (free loop, default)
 
@@ -73,5 +68,5 @@ python run.py grade
 python run.py show <trade_id>    # trade + context + thesis + grade in one view
 ```
 
-Everything lives under `data/` (SQLite journal, token, chain snapshots,
+Everything lives under `data/` (SQLite journal, chain snapshots,
 grading queue) and is gitignored along with `.env`.

@@ -1,4 +1,4 @@
-schwab-py>=1.5.0
+-e ../schwab_hub  # Schwab access via the local hub (../schwab_hub/run.sh)
 anthropic>=0.40.0
 hmmlearn>=0.3.0
 numpy>=1.26

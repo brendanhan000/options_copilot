@@ -2,6 +2,8 @@
 
 A personal, local, **retrospective** options-trading decision journal.
 
+**Run:** start the Schwab hub (`../schwab_hub/run.sh`), then `python run.py sync --days 365` — full steps in `SETUP.md`.
+
 It pulls your own fills from the Schwab Trader API, reconstructs the market
 context that existed at each trade's entry (volatility regime, realized vol,
 dealer-gamma and IV reads when a chain snapshot is available), lets you record
@@ -32,7 +34,7 @@ explicitly forbids the model from doing so. Nothing here is investment advice.
 | --- | --- |
 | `copilot/config.py` | .env loading, paths under `data/`, `require()` |
 | `copilot/prompts.py` | grading system prompt + user template (the core contract) |
-| `copilot/schwab_source.py` | Schwab Trader API via schwab-py (OAuth, transactions, price history, chains) |
+| `copilot/schwab_source.py` | Schwab Trader API via the central schwab_hub (transactions, price history, chains) |
 | `copilot/models.py` | `Instrument`, `Fill`, `Trade`, `classify_strategy()` |
 | `copilot/trade_builder.py` | transactions → round-trip trades + realized P&L |
 | `copilot/regime.py` | 3-state Gaussian HMM regime + realized vol |
@@ -51,13 +53,13 @@ fields are left `"unknown"` — never fabricated — and the grader is instructe
 to lower its confidence accordingly. (A `POLYGON_API_KEY` slot exists if you
 ever want to backfill historical context from a paid data source.)
 
-Also note Schwab's OAuth policy: the access token auto-refreshes every 30
-minutes, but the refresh token expires after **7 days idle** with no
-programmatic renewal — the next `sync` after that simply re-opens the browser
-login. That is normal.
+Also note Schwab's OAuth policy: the refresh token expires after **7 days** with
+no programmatic renewal. The schwab_hub owns it, so when a `sync` fails with an
+auth error, run `../schwab_hub/run.sh login` (this repo never opens a browser
+login itself). That is normal.
 
 ## Setup
 
-See [SETUP.md](SETUP.md). Secrets live only in `.env` (gitignored); nothing is
+See [SETUP.md](SETUP.md). Secrets live only in `.env` (gitignored) and, for Schwab, in the hub; nothing is
 hard-coded and no data leaves your machine except the prompts you choose to
 paste into Claude.ai or send to the Anthropic API.

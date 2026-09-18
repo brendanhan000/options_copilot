@@ -14,10 +14,6 @@ try:
 except ImportError:
     pass
 
-SCHWAB_APP_KEY = os.getenv("SCHWAB_APP_KEY", "")
-SCHWAB_APP_SECRET = os.getenv("SCHWAB_APP_SECRET", "")
-SCHWAB_CALLBACK_URL = os.getenv("SCHWAB_CALLBACK_URL", "https://127.0.0.1:8182")
-SCHWAB_TOKEN_PATH = Path(os.getenv("SCHWAB_TOKEN_PATH", str(DATA_DIR / "schwab_token.json")))
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 GRADER_MODEL = os.getenv("GRADER_MODEL", "claude-fable-5")

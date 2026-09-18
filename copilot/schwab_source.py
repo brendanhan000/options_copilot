@@ -1,10 +1,8 @@
-"""Schwab Trader API access via schwab-py.
+"""Schwab Trader API access via the central schwab_hub.
 
-Auth: schwab-py's easy_client handles the whole OAuth dance — it runs a
-temporary HTTPS loopback server on the callback port, does the token exchange,
-and auto-refreshes the 30-minute access token. The refresh token lives 7 days
-with NO programmatic renewal: after 7 idle days the next run re-opens the
-browser login. That is Schwab policy, not a bug.
+Auth: none here. The hub (../schwab_hub/run.sh) owns the Schwab token; the
+refresh token lives 7 days with NO programmatic renewal, so the weekly login is
+`../schwab_hub/run.sh login`. That is Schwab policy, not a bug.
 
 Account access is indirect: get_account_numbers() maps each accountNumber to a
 hashValue, and every subsequent call uses the hash.
@@ -19,35 +17,12 @@ from . import config
 _PAGE_DAYS = 360
 
 
-def _txn_types():
-    """Import the transaction-type enums defensively across schwab-py versions.
-
-    RECEIVE_AND_DELIVER is needed alongside TRADE: option expirations and
-    assignments arrive under it, and without them positions closed that way
-    would look open forever.
-    """
-    try:
-        from schwab.client import Client
-
-        enum = Client.Transactions.TransactionType
-    except (ImportError, AttributeError):
-        return None
-    types = [enum.TRADE]
-    if hasattr(enum, "RECEIVE_AND_DELIVER"):
-        types.append(enum.RECEIVE_AND_DELIVER)
-    return types
-
-
 def make_client():
-    config.require("SCHWAB_APP_KEY", "SCHWAB_APP_SECRET")
-    from schwab.auth import easy_client
-
-    return easy_client(
-        api_key=config.SCHWAB_APP_KEY,
-        app_secret=config.SCHWAB_APP_SECRET,
-        callback_url=config.SCHWAB_CALLBACK_URL,
-        token_path=str(config.SCHWAB_TOKEN_PATH),
-    )
+    try:
+        from schwab_hub_client import HubClient
+    except ImportError as exc:
+        raise RuntimeError("schwab_hub_client missing: pip install -e ../schwab_hub") from exc
+    return HubClient()
 
 
 class SchwabSource:
@@ -61,15 +36,17 @@ class SchwabSource:
 
     def transactions(self, account_hash: str, start: datetime, end: datetime) -> List[dict]:
         """TRADE + RECEIVE_AND_DELIVER transactions over [start, end], paged by year."""
-        txn_types = _txn_types()
+        # RECEIVE_AND_DELIVER is needed alongside TRADE: option expirations and
+        # assignments arrive under it, and without them positions closed that way
+        # would look open forever.
+        txn_types = ["TRADE", "RECEIVE_AND_DELIVER"]
         txns: List[dict] = []
         page_start = start
         while page_start < end:
             page_end = min(page_start + timedelta(days=_PAGE_DAYS), end)
-            kwargs = {"start_date": page_start, "end_date": page_end}
-            if txn_types is not None:
-                kwargs["transaction_types"] = txn_types
-            resp = self.client.get_transactions(account_hash, **kwargs)
+            resp = self.client.get_transactions(
+                account_hash, start_date=page_start, end_date=page_end, transaction_types=txn_types
+            )
             resp.raise_for_status()
             data = resp.json()
             if isinstance(data, list):
